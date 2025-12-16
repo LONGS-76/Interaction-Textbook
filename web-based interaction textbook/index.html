@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的交互教材</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 引入Supabase客户端库 -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- 登录界面 -->
+    <div id="login-section" class="login-box">
+        <h2>欢迎使用交互教材</h2>
+        <div class="form-group">
+            <input type="email" id="email" placeholder="邮箱地址">
+        </div>
+        <div class="form-group">
+            <input type="password" id="password" placeholder="密码（至少6位）">
+        </div>
+        <div class="form-group">
+            <button onclick="handleLogin()">登录</button>
+            <button onclick="handleSignup()" class="secondary">注册</button>
+        </div>
+        <p id="auth-message" style="color: red; margin-top: 10px;"></p>
+    </div>
+
+    <!-- 教材主界面（登录后显示） -->
+    <div id="main-content" style="display: none;">
+        <div class="header">
+            <span>欢迎，<span id="user-email"></span></span>
+            <button onclick="handleLogout()" class="logout-btn">退出登录</button>
+        </div>
+        
+        <div class="content">
+            <h1>我的交互教材</h1>
+            
+            <!-- 第1章：HTML基础 -->
+            <div class="chapter" data-chapter="1">
+                <h2>第一章：HTML基础</h2>
+                <div class="lesson" data-lesson="1">
+                    <h3>1.1 什么是HTML</h3>
+                    <p>HTML是网页的基础...</p>
+                    <button onclick="completeLesson(1, 1)">标记为完成</button>
+                    <span class="status" id="status-1-1"></span>
+                </div>
+                <div class="lesson" data-lesson="2">
+                    <h3>1.2 HTML标签</h3>
+                    <p>学习各种标签...</p>
+                    <button onclick="completeLesson(1, 2)">标记为完成</button>
+                    <span class="status" id="status-1-2"></span>
+                </div>
+            </div>
+
+            <!-- 测验区域 -->
+            <div class="quiz">
+                <h3>小测验</h3>
+                <p>1. HTML是什么的缩写？</p>
+                <input type="radio" name="q1" value="A"> 超文本标记语言<br>
+                <input type="radio" name="q1" value="B"> 超级文本机器语言<br>
+                <button onclick="submitQuiz(1)">提交答案</button>
+                <p id="quiz-result"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入JavaScript文件 -->
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html>
