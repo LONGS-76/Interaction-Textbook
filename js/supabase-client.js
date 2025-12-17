@@ -1,69 +1,85 @@
-/**
- * Supabase客户端管理
- * 单例模式，确保全局只有一个Supabase客户端实例
- */
+// supabase-client.js - 修复版
+console.log('🚀 加载Supabase客户端修复版...');
 
-// 私有变量
-let _supabaseClient = null;
-let _isInitializing = false;
-let _initPromise = null;
-
-// Supabase客户端类
-class SupabaseClient {
+// Supabase客户端管理器
+class SupabaseClientManager {
     constructor() {
-        console.log('🔄 创建Supabase客户端实例');
+        this.client = null;
+        this.isInitializing = false;
+        this.initPromise = null;
+        
+        console.log('🔄 创建Supabase客户端管理器');
     }
     
-    // 获取Supabase客户端（单例）
-    static async getClient() {
-        // 如果已经初始化，直接返回
-        if (_supabaseClient) {
-            return _supabaseClient;
+    // 获取Supabase客户端
+    async getClient() {
+        // 如果已经有客户端，直接返回
+        if (this.client) {
+            console.log('✅ 返回已存在的Supabase客户端');
+            return this.client;
         }
         
         // 如果正在初始化，等待初始化完成
-        if (_isInitializing && _initPromise) {
-            return await _initPromise;
+        if (this.isInitializing && this.initPromise) {
+            console.log('⏳ Supabase正在初始化，等待...');
+            return await this.initPromise;
         }
         
         // 开始初始化
-        _isInitializing = true;
-        _initPromise = this._initializeClient();
+        this.isInitializing = true;
+        this.initPromise = this.initializeClient();
         
         try {
-            _supabaseClient = await _initPromise;
-            return _supabaseClient;
+            this.client = await this.initPromise;
+            return this.client;
         } finally {
-            _isInitializing = false;
+            this.isInitializing = false;
         }
     }
     
     // 初始化客户端
-    static async _initializeClient() {
-        console.log('🚀 初始化Supabase客户端...');
-        
-        // 检查配置
-        if (!window.APP_CONFIG || !window.APP_CONFIG.supabase) {
-            throw new Error('应用程序配置未加载');
-        }
-        
-        const config = window.APP_CONFIG.supabase;
-        
-        if (!config.url || !config.anonKey) {
-            throw new Error('Supabase配置不完整');
-        }
+    async initializeClient() {
+        console.log('🚀 开始初始化Supabase客户端...');
         
         try {
-            // 1. 加载Supabase库
-            await this._loadSupabaseLibrary();
+            // 1. 检查配置
+            if (!window.APP_CONFIG || !window.APP_CONFIG.supabase) {
+                throw new Error('❌ 应用程序配置未加载');
+            }
             
-            // 2. 创建客户端
-            const client = window.supabase.createClient(config.url, config.anonKey);
+            const config = window.APP_CONFIG.supabase;
             
-            console.log('✅ Supabase客户端初始化成功');
+            if (!config.url || !config.anonKey) {
+                throw new Error('❌ Supabase配置不完整');
+            }
             
-            // 3. 测试连接
-            await this._testConnection(client);
+            console.log('🔧 配置检查通过');
+            
+            // 2. 加载Supabase库
+            await this.loadSupabaseLibrary();
+            
+            console.log('📦 Supabase库加载完成');
+            
+            // 3. 创建客户端
+            const client = window.supabase.createClient(config.url, config.anonKey, {
+                auth: {
+                    autoRefreshToken: true,
+                    persistSession: true,
+                    detectSessionInUrl: true,
+                    storage: window.localStorage,
+                    storageKey: 'supabase.auth.token'
+                },
+                global: {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            });
+            
+            console.log('✅ Supabase客户端创建成功');
+            
+            // 4. 测试连接
+            await this.testConnection(client);
             
             return client;
             
@@ -74,27 +90,27 @@ class SupabaseClient {
     }
     
     // 加载Supabase库
-    static async _loadSupabaseLibrary() {
+    async loadSupabaseLibrary() {
         return new Promise((resolve, reject) => {
             // 如果已经加载，直接返回
             if (window.supabase && window.supabase.createClient) {
+                console.log('✅ Supabase库已加载');
                 resolve();
                 return;
             }
             
-            console.log('📦 加载Supabase库...');
+            console.log('📥 加载Supabase库...');
             
             const script = document.createElement('script');
             script.src = 'https://unpkg.com/@supabase/supabase-js@2';
             script.async = true;
-            
             script.onload = () => {
                 console.log('✅ Supabase库加载成功');
                 resolve();
             };
-            
-            script.onerror = () => {
-                reject(new Error('无法加载Supabase库，请检查网络连接'));
+            script.onerror = (error) => {
+                console.error('❌ 加载Supabase库失败:', error);
+                reject(new Error('无法加载Supabase库'));
             };
             
             document.head.appendChild(script);
@@ -102,17 +118,18 @@ class SupabaseClient {
     }
     
     // 测试连接
-    static async _testConnection(client) {
+    async testConnection(client) {
         try {
             console.log('🔌 测试Supabase连接...');
             
             const { data, error } = await client
                 .from('user_progress')
-                .select('count', { count: 'exact', head: true });
+                .select('count', { count: 'exact', head: true })
+                .limit(1);
             
             if (error) {
-                console.warn('⚠️ Supabase连接测试失败:', error.message);
-                // 不抛出错误，客户端仍可使用
+                console.warn('⚠️ Supabase连接测试有警告:', error.message);
+                // 不抛出错误，客户端可能仍可用
             } else {
                 console.log('✅ Supabase连接正常');
             }
@@ -122,21 +139,26 @@ class SupabaseClient {
         }
     }
     
-    // 重置客户端（用于重新登录等情况）
-    static reset() {
-        console.log('🔄 重置Supabase客户端');
-        _supabaseClient = null;
-        _isInitializing = false;
-        _initPromise = null;
-    }
-    
     // 获取当前用户
-    static async getCurrentUser() {
+    async getCurrentUser() {
         try {
             const client = await this.getClient();
+            if (!client) {
+                console.warn('Supabase客户端不可用');
+                return null;
+            }
+            
             const { data: { user }, error } = await client.auth.getUser();
             
-            if (error) throw error;
+            if (error) {
+                // 认证错误，清除损坏的会话
+                if (error.message.includes('Auth session missing')) {
+                    console.log('🔄 检测到损坏的会话，清除本地存储');
+                    this.clearAuthStorage();
+                }
+                return null;
+            }
+            
             return user;
             
         } catch (error) {
@@ -145,12 +167,39 @@ class SupabaseClient {
         }
     }
     
-    // 检查是否已登录
-    static async isAuthenticated() {
-        const user = await this.getCurrentUser();
-        return !!user;
+    // 清除认证存储
+    clearAuthStorage() {
+        try {
+            // 清除Supabase相关的本地存储
+            localStorage.removeItem('supabase.auth.token');
+            localStorage.removeItem('sb-mdputttsejaxpgimracz-auth-token');
+            
+            // 清除sessionStorage
+            sessionStorage.clear();
+            
+            console.log('🧹 认证存储已清除');
+            
+        } catch (error) {
+            console.error('清除认证存储失败:', error);
+        }
+    }
+    
+    // 重置客户端
+    reset() {
+        console.log('🔄 重置Supabase客户端');
+        this.client = null;
+        this.isInitializing = false;
+        this.initPromise = null;
+        this.clearAuthStorage();
     }
 }
 
-// 暴露到全局
-window.Supabase = SupabaseClient;
+// 创建全局实例
+window.SupabaseManager = new SupabaseClientManager();
+
+// 暴露快捷方法
+window.Supabase = {
+    getClient: () => window.SupabaseManager.getClient(),
+    getUser: () => window.SupabaseManager.getCurrentUser(),
+    reset: () => window.SupabaseManager.reset()
+};
