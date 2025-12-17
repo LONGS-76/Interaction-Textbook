@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第一章：Python基础 - 交互教材</title>
+    <link rel="stylesheet" href="../style.css">
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+</head>
+<body>
+    <!-- 你的教材导航栏 -->
+    <nav class="navbar">
+        <!-- 你的导航内容 -->
+    </nav>
+    
+    <div class="container">
+        <!-- 教材内容 -->
+        <div class="chapter-content">
+            <h1>第一章：Python基础</h1>
+            
+            <section class="lesson">
+                <h2>1.1 第一个Python程序</h2>
+                <p>Python是一种简单易学的编程语言，让我们从第一个程序开始：</p>
+                
+                <div class="code-example">
+                    <h3>示例代码：</h3>
+                    <pre><code>print("Hello, World!")</code></pre>
+                    <p>这段代码会在屏幕上显示"Hello, World!"</p>
+                </div>
+                
+                <!-- 在这里插入Python运行器！ -->
+                <div class="practice-section">
+                    <h3>💡 动手练习</h3>
+                    <p>尝试修改下面的代码，看看会发生什么：</p>
+                    
+                    <!-- Python运行器容器 -->
+                    <div id="python-runner-1"></div>
+                    
+                    <div class="exercise">
+                        <h4>练习1：修改问候语</h4>
+                        <p>将 <code>print("Hello, World!")</code> 改为 <code>print("你好，Python！")</code></p>
+                        
+                        <h4>练习2：打印多行</h4>
+                        <p>添加一行代码：<code>print("这是第二行")</code></p>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="lesson">
+                <h2>1.2 变量和数据类型</h2>
+                <p>在Python中，变量用于存储数据...</p>
+                
+                <div class="code-example">
+                    <h3>示例：变量使用</h3>
+                    <pre><code>name = "小明"
+age = 18
+height = 1.75
+student = True
+
+print(f"姓名: {name}")
+print(f"年龄: {age}岁")
+print(f"身高: {height}米")
+print(f"是学生吗? {student}")</code></pre>
+                </div>
+                
+                <!-- 第二个运行器 -->
+                <div class="practice-section">
+                    <h3>💡 变量练习</h3>
+                    
+                    <div id="python-runner-2"></div>
+                    
+                    <div class="exercise">
+                        <h4>练习：个人信息</h4>
+                        <p>创建变量存储你的信息，并打印出来</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <!-- 引入Python运行器 -->
+    <script src="../js/python-runner.js"></script>
+    
+    <script>
+        // 页面加载完成后初始化运行器
+        document.addEventListener('DOMContentLoaded', function() {
+            // 第一个运行器
+            const runner1 = new PythonRunner({
+                containerId: 'python-runner-1',
+                theme: 'light'
+            });
+            runner1.render();
+            
+            // 预加载Python环境
+            runner1.initialize().then(() => {
+                console.log('第一个运行器就绪');
+            });
+            
+            // 第二个运行器（不同初始代码）
+            const runner2 = new PythonRunner({
+                containerId: 'python-runner-2',
+                theme: 'light'
+            });
+            
+            // 先渲染
+            runner2.render();
+            
+            // 设置特定初始代码
+            document.getElementById('python-runner-2-input').value = 
+                `# 变量练习
+# 在这里编写你的代码
+name = "你的名字"
+age = 0
+hobby = "你的爱好"
+
+# 打印信息
+print("=== 个人信息 ===")
+print(f"姓名: {name}")
+print(f"年龄: {age}")
+print(f"爱好: {hobby}")`;
+            
+            runner2.initialize();
+        });
+    </script>
+
+<!-- 在body结束前添加 -->
+<script src="js/floating-python-runner.js"></script>
+<script>
+    // 初始化浮动运行器
+    document.addEventListener('DOMContentLoaded', function() {
+        window.floatingRunner = new FloatingPythonRunner();
+    });
+</script>
+
+
+</body>
+</html>
