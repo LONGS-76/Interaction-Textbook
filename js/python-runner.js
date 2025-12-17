@@ -1,11 +1,16 @@
-// python-runner.js - Python运行器
+// python-runner.js - Python代码运行器
 console.log('🐍 加载Python运行器...');
 
 class PythonRunner {
     constructor(containerId, options = {}) {
         this.containerId = containerId;
         this.options = {
-            initialCode: `# Python代码练习
+            theme: 'light',
+            readOnly: false,
+            showExamples: true,
+            autoInit: true,
+            initialCode: window.APP_CONFIG?.pythonRunner?.defaultCode || 
+                        `# Python代码练习
 print("Hello, Python!")
 
 # 尝试修改下面的代码
@@ -15,138 +20,264 @@ for i in range(3):
         };
         
         this.pyodide = null;
-        this.isInitialized = false;
+        this.isReady = false;
+        this.status = 'pending';
         
-        this.init();
+        if (this.options.autoInit) {
+            this.init();
+        }
     }
     
     async init() {
-        this.render();
-        await this.preloadPyodide();
+        console.log(`🚀 初始化Python运行器: ${this.containerId}`);
+        
+        try {
+            this.render();
+            this.registerGlobal();
+            this.setupEventListeners();
+            
+            this.status = 'ready';
+            console.log(`✅ Python运行器 ${this.containerId} 初始化完成`);
+            
+        } catch (error) {
+            console.error(`❌ Python运行器 ${this.containerId} 初始化失败:`, error);
+            this.status = 'error';
+        }
     }
     
     render() {
         const container = document.getElementById(this.containerId);
-        if (!container) {
-            console.error(`找不到容器: #${this.containerId}`);
-            return;
-        }
+        if (!container) return;
         
-        container.innerHTML = `
-            <div style="border:1px solid #ddd; border-radius:8px; margin:20px 0; background:white;">
-                <div style="background:#f8f9fa; padding:15px; border-bottom:1px solid #ddd;">
-                    <strong>🐍 Python代码练习</strong>
-                </div>
-                <textarea 
-                    id="${this.containerId}-code" 
-                    style="width:100%; height:150px; padding:15px; border:none; font-family:monospace; font-size:14px;"
-                    placeholder="# 输入Python代码..."
-                >${this.options.initialCode}</textarea>
-                <div style="padding:15px; background:#f8f9fa; text-align:right; border-top:1px solid #ddd;">
-                    <button onclick="window.pythonRunner?.run('${this.containerId}')" 
-                        style="padding:8px 20px; background:#28a745; color:white; border:none; border-radius:4px; cursor:pointer;">
-                        ▶ 运行代码
-                    </button>
-                </div>
-                <div style="padding:15px;">
-                    <div style="font-weight:bold; margin-bottom:5px;">运行结果：</div>
-                    <pre id="${this.containerId}-output" 
-                        style="background:#f5f5f5; padding:10px; min-height:50px; font-family:monospace; border-radius:4px;">
-点击"运行代码"查看结果
-                    </pre>
+        const examples = this.options.showExamples ? `
+            <div class="examples-section">
+                <div class="examples-title">示例代码：</div>
+                <div class="examples-buttons">
+                    <button class="example-btn" onclick="loadExample('${this.containerId}', 'hello')">Hello World</button>
+                    <button class="example-btn" onclick="loadExample('${this.containerId}', 'fibonacci')">斐波那契</button>
+                    <button class="example-btn" onclick="loadExample('${this.containerId}', 'calculator')">计算器</button>
                 </div>
             </div>
-        `;
+        ` : '';
         
-        // 注册到全局
-        if (!window.pythonRunner) {
-            window.pythonRunner = {};
-        }
-        window.pythonRunner[this.containerId] = this;
+        container.innerHTML = `
+            <div class="python-runner">
+                <div class="runner-header">
+                    <div class="runner-title">🐍 Python代码练习</div>
+                    <div class="runner-status" id="${this.containerId}-status">就绪</div>
+                </div>
+                
+                <div class="code-section">
+                    <div class="editor-header">
+                        <div class="editor-label">编写代码：</div>
+                        <div class="editor-actions">
+                            <button class="btn-run" onclick="runPython('${this.containerId}')">▶ 运行</button>
+                            <button class="btn-reset" onclick="resetPython('${this.containerId}')">↺ 重置</button>
+                        </div>
+                    </div>
+                    <textarea 
+                        class="code-input" 
+                        id="${this.containerId}-input"
+                        placeholder="# 在这里编写Python代码..."
+                        ${this.options.readOnly ? 'readonly' : ''}
+                        rows="8"
+                    >${this.options.initialCode}</textarea>
+                </div>
+                
+                <div class="output-section">
+                    <div class="output-header">
+                        <div class="output-label">运行结果：</div>
+                        <button class="btn-clear" onclick="clearOutput('${this.containerId}')">🗑️ 清空</button>
+                    </div>
+                    <pre class="output-content" id="${this.containerId}-output">点击"运行"查看结果...</pre>
+                </div>
+                
+                ${examples}
+            </div>
+        `;
     }
     
-    async preloadPyodide() {
-        console.log('📦 预加载Pyodide...');
-        
-        // 延迟加载
-        setTimeout(async () => {
-            try {
-                if (!window.loadPyodide) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js';
-                    script.async = true;
-                    document.head.appendChild(script);
-                    
-                    await new Promise((resolve) => {
-                        script.onload = resolve;
-                    });
+    registerGlobal() {
+        if (!window.pythonRunners) {
+            window.pythonRunners = {};
+        }
+        window.pythonRunners[this.containerId] = this;
+    }
+    
+    setupEventListeners() {
+        const codeInput = document.getElementById(`${this.containerId}-input`);
+        if (codeInput) {
+            codeInput.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    e.preventDefault();
+                    this.run();
                 }
-                
-                console.log('🚀 开始加载Python环境...');
-                this.pyodide = await loadPyodide();
-                this.isInitialized = true;
-                
-                console.log('✅ Python环境加载完成');
-                
-            } catch (error) {
-                console.error('❌ Python环境加载失败:', error);
-            }
-        }, 2000);
+            });
+        }
     }
     
     async run() {
-        if (!this.isInitialized) {
-            const output = document.getElementById(`${this.containerId}-output`);
-            output.textContent = 'Python环境加载中，请稍候...';
+        if (!this.isReady) {
+            await this.initializePyodide();
             
+            if (!this.isReady) {
+                this.updateStatus('❌ Python环境未就绪');
+                this.updateOutput('Python环境加载失败，请刷新页面重试。');
+                return;
+            }
+        }
+        
+        const code = document.getElementById(`${this.containerId}-input`).value.trim();
+        if (!code) {
+            this.updateStatus('请输入代码');
+            return;
+        }
+        
+        this.updateStatus('运行中...');
+        this.updateOutput('');
+        
+        try {
+            const startTime = performance.now();
+            
+            await this.pyodide.runPythonAsync(`
+import sys, io, js
+
+class OutputCapture:
+    def __init__(self):
+        self.buffer = io.StringIO()
+    
+    def write(self, text):
+        self.buffer.write(text)
+        js.appendPythonOutput('${this.containerId}', text)
+    
+    def flush(self):
+        pass
+
+sys.stdout = OutputCapture()
+sys.stderr = OutputCapture()
+            `);
+            
+            window.appendPythonOutput = (runnerId, text) => {
+                if (runnerId === this.containerId) {
+                    this.appendOutput(text);
+                }
+            };
+            
+            await this.pyodide.runPythonAsync(code);
+            
+            const endTime = performance.now();
+            const timeUsed = (endTime - startTime) / 1000;
+            
+            this.updateStatus(`✅ 运行完成 (${timeUsed.toFixed(2)}秒)`);
+            
+        } catch (error) {
+            this.appendOutput(`\n错误：${error.message}`);
+            this.updateStatus('❌ 运行出错');
+            console.error('代码执行错误:', error);
+        }
+    }
+    
+    reset() {
+        if (confirm('确定要重置代码吗？所有修改将丢失。')) {
+            document.getElementById(`${this.containerId}-input`).value = this.options.initialCode;
+            this.updateStatus('已重置');
+        }
+    }
+    
+    clearOutput() {
+        this.updateOutput('');
+    }
+    
+    loadExample(exampleName) {
+        const examples = window.APP_CONFIG?.pythonRunner?.examples || {
+            hello: `print("Hello, World!")`,
+            fibonacci: `def fib(n):\n    if n <= 1:\n        return n\n    a, b = 0, 1\n    for _ in range(2, n + 1):\n        a, b = b, a + b\n    return b\n\nfor i in range(10):\n    print(fib(i))`,
+            calculator: `def calculate(a, b, op):\n    if op == '+': return a + b\n    elif op == '-': return a - b\n    elif op == '*': return a * b\n    elif op == '/': return a / b if b != 0 else "除数不能为0"\n    else: return "不支持的操作"\n\nprint(calculate(10, 5, '+'))`
+        };
+        
+        if (examples[exampleName]) {
+            document.getElementById(`${this.containerId}-input`).value = examples[exampleName];
+            this.updateStatus(`已加载示例: ${exampleName}`);
+        }
+    }
+    
+    async initializePyodide() {
+        if (this.pyodide) {
+            this.isReady = true;
+            return;
+        }
+        
+        this.updateStatus('正在加载Python环境...');
+        
+        try {
             if (!window.loadPyodide) {
                 const script = document.createElement('script');
                 script.src = 'https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js';
-                document.head.appendChild(script);
                 
-                await new Promise((resolve) => {
+                await new Promise((resolve, reject) => {
                     script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
                 });
             }
             
             this.pyodide = await loadPyodide();
-            this.isInitialized = true;
-        }
-        
-        const code = document.getElementById(`${this.containerId}-code`).value;
-        const output = document.getElementById(`${this.containerId}-output`);
-        
-        if (!code.trim()) {
-            output.textContent = '请输入Python代码！';
-            return;
-        }
-        
-        output.textContent = '运行中...';
-        
-        try {
-            // 设置输出重定向
-            await this.pyodide.runPythonAsync(`
-import sys, io
-output = io.StringIO()
-sys.stdout = output
-sys.stderr = output
-            `);
-            
-            await this.pyodide.runPythonAsync(code);
-            
-            const result = await this.pyodide.runPythonAsync('output.getvalue()');
-            output.textContent = result || '代码执行完成（无输出）';
+            this.isReady = true;
+            this.updateStatus('✅ Python环境就绪');
             
         } catch (error) {
-            output.textContent = '错误：' + error.message;
+            console.error('Pyodide初始化失败:', error);
+            this.updateStatus('❌ Python环境加载失败');
+            throw error;
+        }
+    }
+    
+    updateStatus(message) {
+        const statusEl = document.getElementById(`${this.containerId}-status`);
+        if (statusEl) {
+            statusEl.textContent = message;
+        }
+    }
+    
+    updateOutput(content) {
+        const outputEl = document.getElementById(`${this.containerId}-output`);
+        if (outputEl) {
+            outputEl.textContent = content;
+        }
+    }
+    
+    appendOutput(content) {
+        const outputEl = document.getElementById(`${this.containerId}-output`);
+        if (outputEl) {
+            outputEl.textContent += content;
         }
     }
 }
 
-// 全局运行函数
-window.runPythonCode = function(containerId) {
-    const runner = window.pythonRunner?.[containerId];
+// 全局函数
+window.runPython = function(containerId) {
+    const runner = window.pythonRunners?.[containerId];
     if (runner) {
         runner.run();
     }
 };
+window.resetPython = function(containerId) {
+    const runner = window.pythonRunners?.[containerId];
+    if (runner) {
+        runner.reset();
+    }
+};
+window.clearOutput = function(containerId) {
+    const runner = window.pythonRunners?.[containerId];
+    if (runner) {
+        runner.clearOutput();
+    }
+};
+window.loadExample = function(containerId, exampleName) {
+    const runner = window.pythonRunners?.[containerId];
+    if (runner) {
+        runner.loadExample(exampleName);
+    }
+};
+
+console.log('✅ Python运行器模块加载完成');
