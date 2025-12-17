@@ -5,389 +5,131 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>交互教材 - Python学习平台</title>
     
-    <!-- 注意：Supabase库在head中加载一次 -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    
-    <!-- Pyodide库（Python运行环境） -->
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-    
-    <!-- 字体图标 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <style>
-        /* 保持你原有的样式 */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* 基础样式 */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f7fa; }
         
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+        /* 加载动画 */
+        #loading {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.9); display: flex;
+            justify-content: center; align-items: center; z-index: 9999;
         }
+        .spinner { width: 50px; height: 50px; border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db; border-radius: 50%;
+            animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* ... 其余样式保持不变 ... */
+        /* 登录界面 */
+        .login-container {
+            max-width: 400px; margin: 100px auto; padding: 40px;
+            background: white; border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        .login-container h2 { text-align: center; margin-bottom: 30px; color: #2c3e50; }
+        .form-group { margin-bottom: 20px; }
+        .form-control { width: 100%; padding: 12px; border: 2px solid #e0e0e0;
+            border-radius: 6px; font-size: 16px; }
+        .btn { width: 100%; padding: 12px; background: #3498db; color: white;
+            border: none; border-radius: 6px; font-size: 16px; cursor: pointer;
+            margin-top: 10px; }
+        .btn:hover { background: #2980b9; }
+        .btn-secondary { background: #7f8c8d; }
+        .message { margin-top: 15px; padding: 10px; border-radius: 4px; text-align: center; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        
+        /* 主内容 */
+        .main-container { display: none; }
+        .navbar { background: white; padding: 20px; display: flex;
+            justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .user-info { display: flex; align-items: center; gap: 10px; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%;
+            background: #3498db; color: white; display: flex;
+            align-items: center; justify-content: center; font-weight: bold; }
+        .btn-logout { background: #e74c3c; color: white; border: none;
+            padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        
+        /* Python运行器 */
+        .python-runner { border: 1px solid #ddd; border-radius: 8px; margin: 20px 0; }
+        .runner-header { background: #f0f0f0; padding: 10px; display: flex;
+            justify-content: space-between; }
+        .code-input { width: 100%; height: 150px; padding: 10px;
+            border: 1px solid #ddd; font-family: monospace; }
+        .output-content { background: #f5f5f5; padding: 10px; min-height: 50px;
+            font-family: monospace; }
     </style>
 </head>
 <body>
     <!-- 加载动画 -->
-    <div id="loading" class="loading">
+    <div id="loading">
         <div class="spinner"></div>
     </div>
 
     <!-- 登录界面 -->
     <div id="login-section" class="login-container">
-        <div class="login-header">
-            <h1><i class="fas fa-book"></i> 交互教材</h1>
-            <p>Python在线学习平台</p>
-        </div>
-        
+        <h2>🔐 登录交互教材</h2>
         <div class="form-group">
-            <label class="form-label">邮箱地址</label>
-            <div class="input-group">
-                <i class="input-icon fas fa-envelope"></i>
-                <input type="email" id="email" class="form-control" placeholder="your@email.com" required>
-            </div>
+            <input type="email" id="email" class="form-control" placeholder="邮箱地址" required>
         </div>
-        
         <div class="form-group">
-            <label class="form-label">密码</label>
-            <div class="input-group">
-                <i class="input-icon fas fa-lock"></i>
-                <input type="password" id="password" class="form-control" placeholder="至少6个字符" required>
-            </div>
+            <input type="password" id="password" class="form-control" placeholder="密码（至少6位）" required>
         </div>
-        
-        <button onclick="handleLogin()" class="btn btn-primary">
-            <i class="fas fa-sign-in-alt"></i> 登录
-        </button>
-        
-        <button onclick="handleSignup()" class="btn btn-secondary">
-            <i class="fas fa-user-plus"></i> 注册新账号
-        </button>
-        
+        <button onclick="handleLogin()" class="btn">登录</button>
+        <button onclick="handleSignup()" class="btn btn-secondary">注册</button>
         <div id="auth-message" class="message"></div>
-        
-        <div style="text-align: center; margin-top: 25px; color: #7f8c8d; font-size: 13px;">
-            <i class="fas fa-info-circle"></i> 注册后请检查邮箱验证邮件
-        </div>
     </div>
 
-    <!-- 主内容界面 -->
+    <!-- 主内容 -->
     <div id="main-content" class="main-container">
-        <!-- 顶部导航栏 -->
+        <!-- 导航栏 -->
         <nav class="navbar">
-            <div class="logo">
-                <i class="fas fa-book" style="color: #3498db; font-size: 24px;"></i>
-                <h1>Python交互教材</h1>
-            </div>
-            
-            <div class="user-menu">
-                <div class="user-info">
-                    <div class="user-avatar" id="user-avatar">U</div>
-                    <div>
-                        <div>欢迎，<span id="user-email"></span></div>
-                        <div style="font-size: 12px; color: #7f8c8d;">在线学习中...</div>
-                    </div>
+            <h1>📚 Python交互教材</h1>
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div>
+                    <div>欢迎，<span id="user-email"></span></div>
+                    <button onclick="handleLogout()" class="btn-logout">退出登录</button>
                 </div>
-                <button onclick="handleLogout()" class="btn-logout">
-                    <i class="fas fa-sign-out-alt"></i> 退出登录
-                </button>
             </div>
         </nav>
 
-        <!-- 主要内容 -->
-        <div class="content">
-            <!-- 第一章 -->
-            <div class="chapter">
-                <h2><i class="fas fa-star"></i> 第一章：Python基础入门</h2>
-                
-                <!-- 第1课 -->
-                <div class="lesson">
-                    <h3><i class="fas fa-play-circle"></i> 1.1 第一个Python程序</h3>
-                    <p>Python是一种简单易学的编程语言，让我们从第一个程序开始。学习如何使用<code>print()</code>函数输出内容到屏幕。</p>
-                    
-                    <div class="python-runner-container">
-                        <div class="runner-title">
-                            <i class="fas fa-code"></i> 动手练习
-                        </div>
-                        <div id="python-runner-1"></div>
-                    </div>
-                    
-                    <button onclick="completeLesson(1, 1)" class="btn-complete">
-                        <i class="fas fa-check"></i> 标记为完成
-                    </button>
-                    <span id="status-1-1" class="lesson-status"></span>
-                </div>
-
-                <!-- 第2课 -->
-                <div class="lesson">
-                    <h3><i class="fas fa-play-circle"></i> 1.2 变量和数据类型</h3>
-                    <p>在Python中，变量用于存储数据。学习如何创建变量，以及Python中的基本数据类型：字符串、整数、浮点数、布尔值。</p>
-                    
-                    <div class="python-runner-container">
-                        <div class="runner-title">
-                            <i class="fas fa-code"></i> 变量练习
-                        </div>
-                        <div id="python-runner-2"></div>
-                    </div>
-                    
-                    <button onclick="completeLesson(1, 2)" class="btn-complete">
-                        <i class="fas fa-check"></i> 标记为完成
-                    </button>
-                    <span id="status-1-2" class="lesson-status"></span>
-                </div>
-
-                <!-- 第3课 -->
-                <div class="lesson">
-                    <h3><i class="fas fa-play-circle"></i> 1.3 列表和循环</h3>
-                    <p>学习Python中的列表（list）数据结构，以及如何使用<code>for</code>循环遍历列表。</p>
-                    
-                    <div class="python-runner-container">
-                        <div class="runner-title">
-                            <i class="fas fa-code"></i> 循环练习
-                        </div>
-                        <div id="python-runner-3"></div>
-                    </div>
-                    
-                    <button onclick="completeLesson(1, 3)" class="btn-complete">
-                        <i class="fas fa-check"></i> 标记为完成
-                    </button>
-                    <span id="status-1-3" class="lesson-status"></span>
-                </div>
+        <!-- 内容区域 -->
+        <div style="padding: 20px;">
+            <h2>第一章：Python基础</h2>
+            
+            <!-- 第1课 -->
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3>1.1 第一个Python程序</h3>
+                <p>学习如何使用print()函数输出内容。</p>
+                <div id="python-runner-1"></div>
+                <button onclick="completeLesson(1, 1)" style="background: #2ecc71; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    标记为完成
+                </button>
+                <span id="status-1-1" style="margin-left: 10px; color: #27ae60;"></span>
             </div>
 
-            <!-- 第二章 -->
-            <div class="chapter">
-                <h2><i class="fas fa-star"></i> 第二章：函数和模块</h2>
-                
-                <!-- 第4课 -->
-                <div class="lesson">
-                    <h3><i class="fas fa-play-circle"></i> 2.1 定义函数</h3>
-                    <p>学习如何定义和调用函数，理解参数和返回值的概念。</p>
-                    
-                    <div class="python-runner-container">
-                        <div class="runner-title">
-                            <i class="fas fa-code"></i> 函数练习
-                        </div>
-                        <div id="python-runner-4"></div>
-                    </div>
-                    
-                    <button onclick="completeLesson(2, 1)" class="btn-complete">
-                        <i class="fas fa-check"></i> 标记为完成
-                    </button>
-                    <span id="status-2-1" class="lesson-status"></span>
-                </div>
+            <!-- 第2课 -->
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3>1.2 变量和数据类型</h3>
+                <p>学习变量和基本数据类型。</p>
+                <div id="python-runner-2"></div>
+                <button onclick="completeLesson(1, 2)" style="background: #2ecc71; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    标记为完成
+                </button>
+                <span id="status-1-2" style="margin-left: 10px; color: #27ae60;"></span>
             </div>
-        </div>
-
-        <!-- 页脚 -->
-        <div class="footer">
-            <p>© 2024 交互教材平台 | 网站地址: <span id="site-url"></span></p>
-            <p style="margin-top: 5px; font-size: 12px; color: #95a5a6;">
-                <i class="fas fa-github"></i> GitHub仓库: github.com/LONGS-76/Interaction-Textbook
-            </p>
         </div>
     </div>
 
     <!-- JavaScript文件 -->
-    <!-- 注意：不要在head和body中重复加载Supabase库 -->
-    <!-- 我们只在head中加载了一次，这里不再加载 -->
     <script src="js/config.js"></script>
     <script src="js/supabase-client.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/python-runner.js"></script>
+    <script src="js/floating-python-runner.js"></script>
     <script src="js/main.js"></script>
-
-    <script>
-        // 全局函数
-        window.handleLogin = async function() {
-            const emailInput = document.getElementById('email');
-            const passwordInput = document.getElementById('password');
-            const messageEl = document.getElementById('auth-message');
-            
-            if (!emailInput || !passwordInput) {
-                console.error('找不到登录输入框');
-                if (messageEl) {
-                    messageEl.innerHTML = '<span style="color:red">错误：找不到登录表单</span>';
-                }
-                return;
-            }
-            
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            
-            if (!email || !password) {
-                if (messageEl) {
-                    messageEl.innerHTML = '<span style="color:red">请输入邮箱和密码</span>';
-                }
-                return;
-            }
-            
-            if (window.Auth && window.Auth.login) {
-                const result = await window.Auth.login(email, password);
-                if (result.success) {
-                    // 登录成功，稍后刷新页面
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1000);
-                }
-            } else {
-                console.error('Auth管理器未加载');
-                if (messageEl) {
-                    messageEl.innerHTML = '<span style="color:red">系统初始化中，请稍候...</span>';
-                }
-            }
-        };
-        
-        window.handleSignup = async function() {
-            const emailInput = document.getElementById('email');
-            const passwordInput = document.getElementById('password');
-            const messageEl = document.getElementById('auth-message');
-            
-            if (!emailInput || !passwordInput) {
-                console.error('找不到注册输入框');
-                if (messageEl) {
-                    messageEl.innerHTML = '<span style="color:red">错误：找不到注册表单</span>';
-                }
-                return;
-            }
-            
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            
-            if (!email || !password) {
-                if (messageEl) {
-                    messageEl.innerHTML = '<span style="color:red">请输入邮箱和密码</span>';
-                }
-                return;
-            }
-            
-            if (window.Auth && window.Auth.signup) {
-                await window.Auth.signup(email, password);
-            } else {
-                console.error('Auth管理器未加载');
-                if (messageEl) {
-                    messageEl.innerHTML = '<span style="color:red">系统初始化中，请稍候...</span>';
-                }
-            }
-        };
-        
-        window.handleLogout = async function() {
-            if (confirm('确定要退出登录吗？')) {
-                if (window.Auth && window.Auth.logout) {
-                    await window.Auth.logout();
-                    setTimeout(() => {
-                        location.reload();
-                    }, 500);
-                }
-            }
-        };
-        
-        window.completeLesson = function(chapterId, lessonId) {
-            if (window.Auth && window.Auth.saveProgress) {
-                window.Auth.saveProgress(chapterId, lessonId, {
-                    completedAt: new Date().toISOString(),
-                    chapter: chapterId,
-                    lesson: lessonId
-                }).then(result => {
-                    if (result.success) {
-                        const statusEl = document.getElementById(`status-${chapterId}-${lessonId}`);
-                        if (statusEl) {
-                            statusEl.textContent = '已完成';
-                            statusEl.classList.add('completed');
-                        }
-                        alert('🎉 进度已保存！');
-                    } else {
-                        alert('保存失败: ' + (result.error || '未知错误'));
-                    }
-                });
-            } else {
-                alert('请先登录以保存进度');
-            }
-        };
-        
-        // 页面加载完成后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('📄 页面加载完成');
-            
-            // 显示当前网站地址
-            const siteUrl = document.getElementById('site-url');
-            if (siteUrl) {
-                siteUrl.textContent = window.location.href;
-            }
-            
-            // 隐藏加载动画
-            setTimeout(() => {
-                const loadingEl = document.getElementById('loading');
-                if (loadingEl) {
-                    loadingEl.style.display = 'none';
-                }
-            }, 1000);
-            
-            // 检查URL参数
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.has('error')) {
-                const error = urlParams.get('error');
-                const messageEl = document.getElementById('auth-message');
-                if (messageEl) {
-                    messageEl.innerHTML = `<span style="color:red">错误: ${error}</span>`;
-                }
-            }
-            
-            // 添加键盘快捷键
-            document.addEventListener('keydown', function(e) {
-                // Ctrl+Enter 运行Python代码
-                if (e.ctrlKey && e.key === 'Enter') {
-                    e.preventDefault();
-                    const activeRunner = document.activeElement;
-                    if (activeRunner && activeRunner.className.includes('code-editor')) {
-                        const runBtn = activeRunner.parentNode.querySelector('.btn-run');
-                        if (runBtn) runBtn.click();
-                    }
-                }
-                
-                // Enter 键在登录表单中提交
-                if (e.key === 'Enter') {
-                    const emailInput = document.getElementById('email');
-                    if (emailInput && document.activeElement === emailInput) {
-                        const passwordInput = document.getElementById('password');
-                        if (passwordInput) passwordInput.focus();
-                    } else if (document.activeElement === document.getElementById('password')) {
-                        handleLogin();
-                    }
-                }
-            });
-            
-            // 自动聚焦到邮箱输入框
-            setTimeout(() => {
-                const emailInput = document.getElementById('email');
-                if (emailInput) {
-                    emailInput.focus();
-                }
-            }, 500);
-            
-            console.log('🌐 当前网站:', window.location.href);
-            console.log('🔄 初始化应用程序...');
-            
-            // 初始化应用程序
-            if (window.initApp) {
-                window.initApp();
-            }
-        });
-        
-        // 错误处理
-        window.addEventListener('error', function(event) {
-            console.error('全局错误:', event.error);
-        });
-        
-        window.addEventListener('unhandledrejection', function(event) {
-            console.error('未处理的Promise错误:', event.reason);
-        });
-    </script>
 </body>
 </html>
