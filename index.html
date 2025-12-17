@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互教材 - Python学习平台</title>
+    
+    <!-- 样式 -->
+    <link rel="stylesheet" href="style.css">
+    
+    <style>
+        /* 基础样式 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* 登录界面样式 */
+        .login-section {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        
+        .login-section h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-secondary {
+            background: #7f8c8d;
+            color: white;
+            margin-top: 10px;
+        }
+        
+        .btn-secondary:hover {
+            background: #6c7a7d;
+        }
+        
+        .auth-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .auth-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .auth-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .auth-message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        /* 主内容样式 */
+        .main-content {
+            display: none;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #3498db;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .btn-logout {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-logout:hover {
+            background: #c0392b;
+        }
+        
+        /* 章节内容 */
+        .chapter {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .chapter h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f1f1f1;
+        }
+        
+        .lesson {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .lesson h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .lesson p {
+            margin-bottom: 15px;
+            color: #555;
+        }
+        
+        .btn-complete {
+            background: #2ecc71;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-complete:hover {
+            background: #27ae60;
+        }
+        
+        .lesson-status {
+            display: inline-block;
+            margin-left: 10px;
+            color: #27ae60;
+            font-weight: 500;
+        }
+        
+        .lesson-status.completed::before {
+            content: "✓ ";
+        }
+        
+        /* Python运行器容器 */
+        .python-runner-container {
+            margin: 30px 0;
+        }
+        
+        .runner-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        /* 加载提示 */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录界面 -->
+    <div id="login-section" class="login-section">
+        <h2>🔐 登录交互教材</h2>
+        
+        <div class="form-group">
+            <label for="email">邮箱地址</label>
+            <input type="email" id="email" class="form-control" placeholder="your@email.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">密码</label>
+            <input type="password" id="password" class="form-control" placeholder="至少6个字符">
+        </div>
+        
+        <button onclick="Auth.login()" class="btn btn-primary">登录</button>
+        <button onclick="Auth.signup()" class="btn btn-secondary">注册新账号</button>
+        
+        <div id="auth-message" class="auth-message"></div>
+        
+        <div style="text-align: center; margin-top: 20px; color: #7f8c8d; font-size: 13px;">
+            提示：注册后请检查邮箱验证邮件
+        </div>
+    </div>
+
+    <!-- 主内容界面（登录后显示） -->
+    <div id="main-content" class="container main-content">
+        <!-- 头部 -->
+        <div class="header">
+            <h1>📚 Python交互教材</h1>
+            <div class="user-info">
+                <div class="user-avatar" id="user-avatar">U</div>
+                <div>
+                    <div>欢迎，<span id="user-email"></span></div>
+                    <button onclick="Auth.logout()" class="btn-logout">退出登录</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 章节内容 -->
+        <div class="chapter">
+            <h2>第一章：Python基础入门</h2>
+            
+            <!-- 第1课 -->
+            <div class="lesson">
+                <h3>1.1 第一个Python程序</h3>
+                <p>学习如何使用print()函数输出内容到屏幕。这是学习任何编程语言的第一步。</p>
+                
+                <!-- Python运行器 -->
+                <div class="python-runner-container">
+                    <div class="runner-title">💡 动手练习</div>
+                    <div id="python-runner-1"></div>
+                </div>
+                
+                <button onclick="completeLesson(1, 1)" class="btn-complete">标记为完成</button>
+                <span id="status-1-1" class="lesson-status"></span>
+            </div>
+
+            <!-- 第2课 -->
+            <div class="lesson">
+                <h3>1.2 变量和数据类型</h3>
+                <p>学习如何创建变量，以及Python中的基本数据类型：字符串、整数、浮点数、布尔值。</p>
+                
+                <!-- 第二个Python运行器 -->
+                <div class="python-runner-container">
+                    <div class="runner-title">💡 变量练习</div>
+                    <div id="python-runner-2"></div>
+                </div>
+                
+                <button onclick="completeLesson(1, 2)" class="btn-complete">标记为完成</button>
+                <span id="status-1-2" class="lesson-status"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载提示 -->
+    <div id="loading" class="loading" style="display: none;">
+        正在加载...
+    </div>
+
+    <!-- 脚本引入 -->
+    <!-- 注意：按顺序加载很重要！ -->
+    <script src="js/config.js"></script>
+    <script src="js/supabase-client.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/python-runner.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
