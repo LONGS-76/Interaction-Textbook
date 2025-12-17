@@ -1,40 +1,22 @@
-// auth.js - 修复版认证模块
-console.log('🔐 加载认证模块修复版...');
+// auth.js - 用户认证模块
+console.log('🔐 加载认证模块...');
 
 class AuthManager {
     constructor() {
         this.currentUser = null;
         this.isInitialized = false;
-        
         console.log('🔄 创建认证管理器');
     }
     
     // 初始化
     async init() {
-        if (this.isInitialized) {
-            return;
-        }
+        if (this.isInitialized) return;
         
         console.log('🚀 初始化认证系统...');
         
         try {
-            // 清除可能损坏的会话
-            this.clearBrokenSession();
-            
-            // 获取Supabase客户端
-            const client = await window.SupabaseManager.getClient();
-            if (!client) {
-                throw new Error('无法获取Supabase客户端');
-            }
-            
-            console.log('✅ Supabase客户端就绪');
-            
-            // 设置认证状态监听
-            this.setupAuthListener(client);
-            
-            // 检查当前登录状态
+            // 检查登录状态
             await this.checkAuthState();
-            
             this.isInitialized = true;
             console.log('✅ 认证系统初始化完成');
             
@@ -43,61 +25,10 @@ class AuthManager {
         }
     }
     
-    // 清除损坏的会话
-    clearBrokenSession() {
-        console.log('🧹 检查并清除损坏的会话...');
-        
-        // 检查localStorage中是否有损坏的token
-        const authToken = localStorage.getItem('supabase.auth.token');
-        if (authToken) {
-            try {
-                const tokenData = JSON.parse(authToken);
-                if (!tokenData || !tokenData.access_token) {
-                    console.log('发现损坏的token，清除...');
-                    localStorage.removeItem('supabase.auth.token');
-                }
-            } catch (error) {
-                console.log('解析token失败，清除...');
-                localStorage.removeItem('supabase.auth.token');
-            }
-        }
-    }
-    
-    // 设置认证监听
-    setupAuthListener(client) {
-        if (!client) return;
-        
-        client.auth.onAuthStateChange((event, session) => {
-            console.log('🔐 认证状态变化:', event);
-            
-            switch (event) {
-                case 'SIGNED_IN':
-                    this.currentUser = session?.user || null;
-                    this.updateUI(true, this.currentUser);
-                    break;
-                    
-                case 'SIGNED_OUT':
-                    this.currentUser = null;
-                    this.updateUI(false, null);
-                    break;
-                    
-                case 'USER_UPDATED':
-                    this.currentUser = session?.user || null;
-                    break;
-                    
-                case 'TOKEN_REFRESHED':
-                    console.log('🔁 Token已刷新');
-                    break;
-            }
-        });
-    }
-    
     // 检查认证状态
     async checkAuthState() {
         try {
-            console.log('🔍 检查认证状态...');
-            
-            const user = await window.SupabaseManager.getCurrentUser();
+            const user = await window.getCurrentUser();
             
             if (user) {
                 this.currentUser = user;
@@ -114,7 +45,7 @@ class AuthManager {
         } catch (error) {
             console.error('检查认证状态失败:', error);
             this.updateUI(false, null);
-            return { isAuthenticated: false, user: null, error };
+            return { isAuthenticated: false, user: null };
         }
     }
     
@@ -146,7 +77,7 @@ class AuthManager {
     // 登录
     async login(email, password) {
         try {
-            console.log('🔐 用户登录:', email);
+            console.log('🔐 尝试登录:', email);
             
             if (!email || !password) {
                 throw new Error('请输入邮箱和密码');
@@ -154,7 +85,7 @@ class AuthManager {
             
             this.showMessage('正在登录...', 'info');
             
-            const client = await window.SupabaseManager.getClient();
+            const client = await window.getSupabaseClient();
             if (!client) {
                 throw new Error('系统初始化失败');
             }
@@ -187,7 +118,7 @@ class AuthManager {
     // 注册
     async signup(email, password) {
         try {
-            console.log('📝 用户注册:', email);
+            console.log('📝 尝试注册:', email);
             
             if (!email || !password) {
                 throw new Error('请输入邮箱和密码');
@@ -195,7 +126,7 @@ class AuthManager {
             
             this.showMessage('正在注册...', 'info');
             
-            const client = await window.SupabaseManager.getClient();
+            const client = await window.getSupabaseClient();
             if (!client) {
                 throw new Error('系统初始化失败');
             }
@@ -210,7 +141,7 @@ class AuthManager {
             }
             
             this.showMessage('注册成功！请检查邮箱验证邮件。', 'success');
-            console.log('✅ 注册成功:', email);
+            console.log('✅ 注册成功');
             
             return { success: true, data };
             
@@ -224,9 +155,9 @@ class AuthManager {
     // 登出
     async logout() {
         try {
-            console.log('🚪 用户登出');
+            console.log('🚪 尝试登出');
             
-            const client = await window.SupabaseManager.getClient();
+            const client = await window.getSupabaseClient();
             if (!client) {
                 throw new Error('系统初始化失败');
             }
@@ -240,7 +171,6 @@ class AuthManager {
             // 重置状态
             this.currentUser = null;
             this.updateUI(false, null);
-            window.SupabaseManager.reset();
             
             this.showMessage('已退出登录', 'success');
             console.log('✅ 登出成功');
@@ -260,13 +190,13 @@ class AuthManager {
         if (!messageEl) return;
         
         messageEl.textContent = text;
-        messageEl.className = 'auth-message ' + type;
+        messageEl.className = 'message ' + type;
         
         // 3秒后清除
         if (type !== 'info') {
             setTimeout(() => {
                 messageEl.textContent = '';
-                messageEl.className = 'auth-message';
+                messageEl.className = 'message';
             }, 3000);
         }
     }
@@ -275,73 +205,56 @@ class AuthManager {
     isLoggedIn() {
         return !!this.currentUser;
     }
-    
-    // 获取当前用户
-    getCurrentUser() {
-        return this.currentUser;
-    }
 }
 
 // 创建全局实例
-window.Auth = new AuthManager();
+const authManager = new AuthManager();
 
-// 全局登录函数
+// 暴露到全局
+window.Auth = authManager;
 window.handleLogin = async function() {
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    
-    if (!emailInput || !passwordInput) {
-        console.error('找不到登录输入框');
-        return;
-    }
-    
-    const email = emailInput.value;
-    const password = passwordInput.value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
     
     if (!email || !password) {
-        window.Auth.showMessage('请输入邮箱和密码', 'error');
+        authManager.showMessage('请输入邮箱和密码', 'error');
         return;
     }
     
-    await window.Auth.login(email, password);
+    const result = await authManager.login(email, password);
+    if (result.success) {
+        setTimeout(() => {
+            location.reload();
+        }, 1000);
+    }
 };
-
-// 全局注册函数
 window.handleSignup = async function() {
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    
-    if (!emailInput || !passwordInput) {
-        console.error('找不到注册输入框');
-        return;
-    }
-    
-    const email = emailInput.value;
-    const password = passwordInput.value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
     
     if (!email || !password) {
-        window.Auth.showMessage('请输入邮箱和密码', 'error');
+        authManager.showMessage('请输入邮箱和密码', 'error');
         return;
     }
     
-    await window.Auth.signup(email, password);
+    await authManager.signup(email, password);
 };
-
-// 全局登出函数
 window.handleLogout = async function() {
     if (confirm('确定要退出登录吗？')) {
-        await window.Auth.logout();
+        await authManager.logout();
+        setTimeout(() => {
+            location.reload();
+        }, 500);
     }
 };
+window.completeLesson = function(chapterId, lessonId) {
+    alert('完成课程功能需要Supabase数据库支持');
+};
 
-// 页面加载完成后初始化
+// 页面加载时初始化
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 页面加载完成，初始化认证...');
-    
-    // 延迟初始化，避免阻塞
-    setTimeout(() => {
-        if (window.Auth) {
-            window.Auth.init();
-        }
-    }, 1000);
+    console.log('📄 认证模块初始化...');
+    authManager.init();
 });
+
+console.log('✅ 认证模块加载完成');
